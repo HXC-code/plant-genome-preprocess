@@ -42,14 +42,31 @@ jobs:
 
   wgdi-runtime:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install Linux bioinformatics tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y diamond-aligner muscle paml
       - name: Install pinned WGDI runtime
         run: python -m pip install -r requirements-wgdi-validated.txt
-      - name: Verify launcher and compatibility entry
+      - name: Install PAL2NAL from official source
+        run: python code/tools/install_pal2nal.py
+      - name: Build and run full Linux smoke
         run: |
           bash bin/wgdi --help >/dev/null
           python -c "import wgdi; print('wgdi import OK')"
+          python code/tools/build_synthetic_wgdi_smoke.py \
+            --workflow-root "$PWD" --output-root "$RUNNER_TEMP/smoke" \
+            --genes-per-species 120 --chromosomes 8 --protein-length 80
+          bash code/tools/run_wgdi_smoke.sh "$RUNNER_TEMP/smoke"
+      - name: Upload Linux smoke receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-smoke-receipt
+          path: ${{ runner.temp }}/smoke/smoke_report.public.json
+          if-no-files-found: error
