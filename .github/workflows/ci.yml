@@ -8,7 +8,12 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: code
@@ -16,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: code/pyproject.toml
       - name: Install package and checks
@@ -27,3 +32,24 @@ jobs:
         run: python -m ruff check src tests scripts tools
       - name: mypy
         run: python -m mypy src --ignore-missing-imports
+      - name: Shell syntax
+        shell: bash
+        working-directory: .
+        run: |
+          for script in *.sh code/tools/*.sh; do
+            bash -n "$script"
+          done
+
+  wgdi-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned WGDI runtime
+        run: python -m pip install -r requirements-wgdi-validated.txt
+      - name: Verify launcher and compatibility entry
+        run: |
+          bash bin/wgdi --help >/dev/null
+          python -c "import wgdi; print('wgdi import OK')"

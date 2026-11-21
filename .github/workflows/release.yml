@@ -1,0 +1,28 @@
+name: Release package
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build source release
+        run: |
+          python code/tools/build_release_package.py \
+            --output "dist/plant-genome-preprocess-${GITHUB_REF_NAME}.zip"
+      - name: Upload release asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: plant-genome-preprocess-${{ github.ref_name }}
+          path: dist/*.zip
+          if-no-files-found: error
